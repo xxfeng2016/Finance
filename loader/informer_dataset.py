@@ -26,27 +26,22 @@ from datetime import datetime, time
 np.set_printoptions(floatmode="fixed", precision=8, suppress=True)
 torch.set_printoptions(sci_mode=False)
 
-class DS(Dataset):
+class Informer_DS(Dataset):
 
-    def __init__(self, data_paths = None, window_size=(1, 0), sliding_size=(0, 30), target_size=(0, 10)):
+    def __init__(self, data_paths = None, freq="1s", window_size=180, sliding_size=30, target_size=30):
         if data_paths == [] or data_paths is None:
             raise ValueError("No data paths given")
         
         self.data_paths = data_paths
-        
-        self.window_size = pd.Timedelta(minutes=window_size[0], seconds=window_size[1])
-        self.sliding_size = pd.Timedelta(minutes=sliding_size[0], seconds=sliding_size[1])
-        self.target_size = pd.Timedelta(minutes=target_size[0], seconds=target_size[1])
+        self.window_size = window_size
+        self.sliding_size = sliding_size
+        self.target_size = target_size
         
         self.df = pd.read_parquet(self.data_paths.pop(0))
-        self.start_idx = 0
-        self.start_time = self.df['STCK_CNTG_HOUR'].iloc[0]
-        self.date_list = self.df['STCK_CNTG_HOUR'].dt.date.unique()
         self.idx = 0
-        self.total_idx = 0
     
     def __len__(self):
-        return len(self.df) + sum([len(pd.read_parquet(path)) for path in self.data_paths])
+        return len(self.df)//self.sliding_size
 
     def calc_idx(self, df_idx):
         return self.total_idx + df_idx
