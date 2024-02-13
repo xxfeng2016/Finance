@@ -1,26 +1,46 @@
-from torch.utils.data import DataLoader
-from custom_dataset import DS, collate_func
-from glob import glob
-from tqdm import tqdm
+# Standard
 import os
-# from base import BaseDataLoader
-from sklearn.model_selection import train_test_split
-from datasets import DatasetDict
-from scipy.special import inv_boxcox
+import random
+
+# Third Party
+from transformers import (
+    EarlyStoppingCallback,
+    PatchTSMixerConfig,
+    PatchTSMixerForPrediction,
+    Trainer,
+    TrainingArguments,
+)
+import numpy as np
+import pandas as pd
+import torch
+
+# First Party
+from tsfm_public.toolkit.dataset import ForecastDFDataset
+from tsfm_public.toolkit.time_series_preprocessor import TimeSeriesPreprocessor
+from tsfm_public.toolkit.util import select_by_index
+# from torch.utils.data import DataLoader
+# from custom_dataset import DS, collate_func
+# from glob import glob
+# from tqdm import tqdm
+# import os
+# # from base import BaseDataLoader
+# from sklearn.model_selection import train_test_split
+# from datasets import DatasetDict
+# from scipy.special import inv_boxcox
 
 
 
-# print(os.getcwd())
-# print(glob("../data/*.parquet"))
-# fold < epoch < batch < data
-dataset = DS(data_paths=sorted(glob("data/*.parquet"))[-2:], window_size=(3, 0), target_size=(1, 0))
-# dataset
+# # print(os.getcwd())
+# # print(glob("../data/*.parquet"))
+# # fold < epoch < batch < data
+# dataset = DS(data_paths=sorted(glob("data/*.parquet"))[-2:], window_size=(3, 0), target_size=(1, 0))
+# # dataset
 
-progress = tqdm(DataLoader(dataset, batch_size=2, shuffle=False, collate_fn=collate_func(True)), total=len(dataset))
-for idx, boxcox_lambda, x, y in progress:
-    progress.n = idx
-    progress.refresh()
-    print(x)
+# progress = tqdm(DataLoader(dataset, batch_size=2, shuffle=False, collate_fn=collate_func(True)), total=len(dataset))
+# for idx, boxcox_lambda, x, y in progress:
+#     progress.n = idx
+#     progress.refresh()
+#     print(x)
     # print("inverse 거래량 :", inv_boxcox(volume[0], volume[1]))
     # print("원본 거래량 :", x["CNTG_VOL"].values + 1e-9)
     

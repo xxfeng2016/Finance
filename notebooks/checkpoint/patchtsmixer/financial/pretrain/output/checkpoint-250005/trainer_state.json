@@ -1,0 +1,35 @@
+{
+  "best_metric": 63138414592.0,
+  "best_model_checkpoint": "./checkpoint/patchtsmixer/financial/pretrain/output/checkpoint-250005",
+  "epoch": 1.0,
+  "eval_steps": 500,
+  "global_step": 250005,
+  "is_hyper_param_search": false,
+  "is_local_process_zero": true,
+  "is_world_process_zero": true,
+  "log_history": [
+    {
+      "epoch": 1.0,
+      "learning_rate": 0.0,
+      "loss": 633757440692.841,
+      "step": 250005
+    },
+    {
+      "epoch": 1.0,
+      "eval_loss": 63138414592.0,
+      "eval_runtime": 199.7735,
+      "eval_samples_per_second": 357.54,
+      "eval_steps_per_second": 178.772,
+      "step": 250005
+    }
+  ],
+  "logging_steps": 500,
+  "max_steps": 250005,
+  "num_input_tokens_seen": 0,
+  "num_train_epochs": 1,
+  "save_steps": 500,
+  "total_flos": 181392577007616.0,
+  "train_batch_size": 2,
+  "trial_name": null,
+  "trial_params": null
+}
