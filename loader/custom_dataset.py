@@ -26,9 +26,9 @@ from datetime import datetime, time
 np.set_printoptions(floatmode="fixed", precision=8, suppress=True)
 torch.set_printoptions(sci_mode=False)
 
-class DS(Dataset):
+class DS():
 
-    def __init__(self, data_paths = None, window_size=(1, 0), sliding_size=(0, 30), target_size=(0, 10)):
+    def __init__(self, data_paths = None, window_size=(3, 0), sliding_size=(0, 30), target_size=(1, 0)):
         if data_paths == [] or data_paths is None:
             raise ValueError("No data paths given")
         
@@ -58,6 +58,7 @@ class DS(Dataset):
             self.df = pd.read_parquet(self.data_paths.pop(0))
             self.start_time = self.df['STCK_CNTG_HOUR'].iloc[0]
             self.date_list = self.df['STCK_CNTG_HOUR'].dt.date.unique()
+
         except IndexError:
             raise StopIteration
 
@@ -102,12 +103,26 @@ class DS(Dataset):
             self.start_time += self.sliding_size
             # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
             self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
-            
+
         if x.empty:
             return self.__getitem__(idx)
+
+        y = self.calculate_prob_distribution(((y["STCK_PRPR"] - x.iloc[-1]["STCK_PRPR"]) / x.iloc[-1]["STCK_PRPR"] >= 0.01).values)
+
         
-        self.idx = self.calc_idx(x.index[-1])
-        return self.idx, x, y
+        return x, y
+    
+    def calculate_prob_distribution(self, data):
+        # 1% 상승한 포인트 수
+        true_count = np.sum(data)
+    
+        # True의 확률
+        true_prob = true_count / data.size
+
+        # False의 확률
+        false_prob = 1 - true_prob
+        
+        return true_prob, false_prob # input의 클래스 확률 분포 (True, False)
 
 class collate_func():
     def __init__(self, is_train):
@@ -122,7 +137,7 @@ class collate_func():
         
     def __call__(self, batch):
         batch_x, batch_boxcox_lambda, batch_y = [], [], [] # boxcox_lambda : (volume Lambda, amount Lambda)
-        max_length = max(len(x) for idx, x, y in batch)
+        max_length = max(len(x) for x, y in batch) # idx, x, y 
         
         for idx, x, y in batch:
             fy = self.featuring_y(x, y)

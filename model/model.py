@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from distutils.util import strtobool
 from base import BaseModel
 from datasets import load_dataset, Dataset, DatasetInfo
 from gluonts.time_feature import get_lags_for_frequency, time_features_from_frequency_str
