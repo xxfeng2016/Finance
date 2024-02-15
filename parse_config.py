@@ -4,7 +4,7 @@ from pathlib import Path
 from functools import reduce, partial
 from operator import getitem
 from datetime import datetime
-from logging import setup_logging
+from logger import setup_logging
 from utils import read_json, write_json
 
 
@@ -65,7 +65,10 @@ class ConfigParser:
             cfg_fname = resume.parent / 'config.json'
         else:
             msg_no_cfg = "구성 파일을 지정해야 합니다. 예를 들어 '-c config.json'을 추가하세요."
-            assert args.config is not None, msg_no_cfg
+            ##############################
+            # assert args.config is not None, msg_no_cfg
+            args.config = "config.json"
+            ##############################
             resume = None
             cfg_fname = Path(args.config)
         

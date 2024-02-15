@@ -4,7 +4,7 @@ from pathlib import Path
 from utils import read_json
 
 
-def setup_logger(save_dir, log_config='logger/logger_config.json', default_level=logging.INFO):
+def setup_logging(save_dir, log_config='logger/logger_config.json', default_level=logging.INFO):
     """
     로깅 구성 설정
     """

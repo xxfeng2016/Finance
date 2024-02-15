@@ -1,25 +1,33 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from distutils.util import strtobool
-from base import BaseModel
-from datasets import load_dataset, Dataset, DatasetInfo
-from gluonts.time_feature import get_lags_for_frequency, time_features_from_frequency_str
 
-from gluonts.time_feature import get_lags_for_frequency
-class MnistModel(BaseModel):
-    def __init__(self, num_classes=10):
-        super().__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, num_classes)
+from base import BaseModel
+
+class FinCNN(BaseModel):
+    def __init__(self, num_classes, d_k=3, d_model=16, kernel_size=3):
+        super(FinCNN, self).__init__()
+        self.conv1 = nn.Sequential(
+                nn.Conv1d(in_channels=d_k, out_channels=d_model, kernel_size=kernel_size, stride=1),
+                nn.ReLU(),
+                nn.MaxPool1d(kernel_size=2, stride=2, padding=0)
+            )
+        
+        self.conv2 = nn.Sequential(
+                nn.Conv1d(in_channels=d_model, out_channels=d_model*2, kernel_size=kernel_size, stride=1),
+                nn.AdaptiveAvgPool1d(1),  # Global Average Pooling
+                nn.Flatten()
+            )
+
+        self.fc1 = nn.Linear(d_model*2, 128)  # GAP으로 인해 Linear의 input dimention == conv2의 out_channels
+        self.fc2 = nn.Linear(128, num_classes)
+        self.out = nn.Softmax(dim=1)
 
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.fc1(x)
         x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
+        x = self.out(x)
+        
+        return x
