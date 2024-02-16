@@ -103,17 +103,16 @@ class FinDataset(IterableDataset):
         try:
             self.df = pd.read_parquet(self.data_paths[self.file_idx])
             
-            
         except IndexError:
-            raise StopIteration
+            return StopIteration
         
         self.start_time = self.df['STCK_CNTG_HOUR'].iloc[0]
         self.date_list = self.df['STCK_CNTG_HOUR'].dt.date.unique()
 
     def __iter__(self):
         return iter(self.generate())
-    
-    
+
+
 class FinCollate():
     def __init__(self):
         self.scaler = RobustScaler()
