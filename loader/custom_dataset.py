@@ -1,9 +1,9 @@
 import sys
 import os
-
+import gc
 # sys.path.append(os.path.dirname(os.path.abspath(os.path.join(os.getcwd(), "AutoTrading"))))
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset
 import torch
 
 from glob import glob
@@ -27,7 +27,7 @@ np.set_printoptions(floatmode="fixed", precision=8, suppress=True)
 torch.set_printoptions(sci_mode=False)
 
 
-class FinDataset(Dataset):
+class FinDataset(IterableDataset):
     def __init__(self, data_paths = None, window_size=(3, 0), sliding_size=(0, 30), target_size=(1, 0)):
         if data_paths == [] or data_paths is None:
             raise ValueError("No data paths given")
@@ -38,87 +38,96 @@ class FinDataset(Dataset):
         self.sliding_size = pd.Timedelta(minutes=sliding_size[0], seconds=sliding_size[1])
         self.target_size = pd.Timedelta(minutes=target_size[0], seconds=target_size[1])
 
-        self.df = pd.read_parquet(self.data_paths.pop(0))
+        self.df = None
+        self.file_idx = None
         self.start_idx = 0
-        self.start_time = self.df['STCK_CNTG_HOUR'].iloc[0]
-        self.date_list = self.df['STCK_CNTG_HOUR'].dt.date.unique()
         self.idx = 0
-        self.total_idx = 0
-
+        
+        self.start_time = None
+        self.date_list = None
+        
+        self.reset()
+        
     def __len__(self):
-        return len(self.data_paths)
+        return 99999
+    
+    def generate(self):
+        while True:
+            
+            if self.start_time.time() < time(9, 0, 0):
+                end_time = datetime.combine(self.start_time.date(), time(9, 0, 0))
 
-    def calc_idx(self, df_idx):
-        return self.total_idx + df_idx
+                x = self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time) & (self.df['STCK_CNTG_HOUR'] < end_time)]
+                y = self.df[(self.df['STCK_CNTG_HOUR'] >= end_time) & (self.df["STCK_CNTG_HOUR"] <= end_time + self.target_size)]
+
+                # 다음 슬라이딩 시작 시간으로 업데이트
+                self.start_time = end_time
+                # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
+                self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
+
+            elif self.start_time >= datetime.combine(self.start_time.date(), time(15, 20, 0)) - self.target_size: # 
+                try:
+                    end_time = datetime.combine(self.date_list[np.where(self.date_list > self.start_time.date())][0], time(9, 0, 0))
+                except IndexError:
+                    self.idx += len(self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time)])
+                    self.reset()
+                    continue
+
+
+                x = self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time) & (self.df['STCK_CNTG_HOUR'] < end_time)]
+                y = self.df[(self.df['STCK_CNTG_HOUR'] >= end_time) & (self.df["STCK_CNTG_HOUR"] <= end_time + self.target_size)]
+
+                # 다음 슬라이딩 시작 시간으로 업데이트
+                self.start_time = end_time
+                # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
+                self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
+
+            else:
+                end_time = self.start_time + self.window_size
+                x = self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time) & (self.df['STCK_CNTG_HOUR'] < end_time)]
+                y = self.df[(self.df['STCK_CNTG_HOUR'] >= end_time) & (self.df['STCK_CNTG_HOUR'] <= end_time + self.target_size)]
+
+                # 다음 슬라이딩 시작 시간으로 업데이트
+                self.start_time += self.sliding_size
+                # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
+                self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
+
+            if x.empty:
+                continue
+                
+            yield x, y
 
     def reset(self):
+        self.start_idx = 0
+        self.idx = 0
+        self.file_idx = self.file_idx + 1 if self.file_idx is not None else 0
+
+        # 데이터프레임 메모리 해제
+        del self.df
+        gc.collect()
         try:
-            self.start_idx = 0
-            self.total_idx += self.idx
-            self.df = pd.read_parquet(self.data_paths.pop(0))
-            self.start_time = self.df['STCK_CNTG_HOUR'].iloc[0]
-            self.date_list = self.df['STCK_CNTG_HOUR'].dt.date.unique()
+            self.df = pd.read_parquet(self.data_paths[self.file_idx])
+            
             
         except IndexError:
             raise StopIteration
+        
+        self.start_time = self.df['STCK_CNTG_HOUR'].iloc[0]
+        self.date_list = self.df['STCK_CNTG_HOUR'].dt.date.unique()
 
-    def __getitem__(self, idx):
-        if self.start_time.time() < time(9, 0, 0):
-            end_time = datetime.combine(self.start_time.date(), time(9, 0, 0))
-
-            x = self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time) & (self.df['STCK_CNTG_HOUR'] < end_time)]
-            y = self.df[(self.df['STCK_CNTG_HOUR'] >= end_time) & (self.df["STCK_CNTG_HOUR"] <= end_time + self.target_size)]
-
-            # 다음 슬라이딩 시작 시간으로 업데이트
-            self.start_time = end_time
-            # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
-            self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
-
-        elif self.start_time >= datetime.combine(self.start_time.date(), time(15, 20, 0)) - self.target_size: # 
-            try:
-                end_time = datetime.combine(self.date_list[np.where(self.date_list > self.start_time.date())][0], time(9, 0, 0))
-            except IndexError:
-                self.idx += len(self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time)])
-
-                self.reset()
-                return self.__getitem__(idx)
-
-            except StopIteration:
-                raise StopIteration
-
-            x = self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time) & (self.df['STCK_CNTG_HOUR'] < end_time)]
-            y = self.df[(self.df['STCK_CNTG_HOUR'] >= end_time) & (self.df["STCK_CNTG_HOUR"] <= end_time + self.target_size)]
-
-            # 다음 슬라이딩 시작 시간으로 업데이트
-            self.start_time = end_time
-            # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
-            self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
-
-        else:
-            end_time = self.start_time + self.window_size
-            x = self.df[(self.df['STCK_CNTG_HOUR'] >= self.start_time) & (self.df['STCK_CNTG_HOUR'] < end_time)]
-            y = self.df[(self.df['STCK_CNTG_HOUR'] >= end_time) & (self.df['STCK_CNTG_HOUR'] <= end_time + self.target_size)]
-
-            # 다음 슬라이딩 시작 시간으로 업데이트
-            self.start_time += self.sliding_size
-            # 다음 슬라이딩 윈도우의 시작 인덱스 업데이트
-            self.start_idx = self.df.index[self.df['STCK_CNTG_HOUR'] >= self.start_time].min()
-
-        if x.empty:
-            return self.__getitem__(idx)
-        self.idx = self.calc_idx(x.index[-1])
-        return self.idx, x, y
-
-class collate_func():
-    def __init__(self, is_train):
-        self.is_train = is_train
+    def __iter__(self):
+        return iter(self.generate())
+    
+    
+class FinCollate():
+    def __init__(self):
         self.scaler = RobustScaler()
 
     def __call__(self, batch):
         batch_x, batch_y, batch_inv_lambda = [], [], []
-        max_length = max(len(x) for idx, x, y in batch)
+        max_length = max(len(x) for x, y in batch)
 
-        for idx, x, y in batch:
+        for x, y in batch:
             fy = self.calculate_prob_distribution(x, y)
             fx, inv_lambda = self.featuring_x(x)
 
@@ -128,8 +137,8 @@ class collate_func():
             batch_y.append(fy)
             batch_inv_lambda.append(inv_lambda)
 
-        return idx, batch_inv_lambda, torch.tensor(np.array(batch_x), dtype=torch.float32, requires_grad=False).transpose(1,2), torch.tensor(np.array(batch_y), dtype=torch.float32, requires_grad=False)
-
+        return torch.tensor(np.array(batch_x), dtype=torch.float32, requires_grad=False).transpose(1,2), torch.tensor(np.array(batch_y), dtype=torch.float32, requires_grad=False)#batch_inv_lambda, idx,
+    
     def featuring_x(self, x):
         if len(x) < 2:
             return np.column_stack([[0.], [0.], [0.], x["CCLD_DVSN"].values]).astype(np.float16)

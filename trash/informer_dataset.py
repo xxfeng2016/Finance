@@ -41,7 +41,7 @@ class Informer_DS(Dataset):
         self.idx = 0
     
     def __len__(self):
-        return len(self.df)//self.sliding_size
+        return len(self.df)//self.sliding_size + self.window_size
 
     def calc_idx(self, df_idx):
         return self.total_idx + df_idx

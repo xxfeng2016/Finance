@@ -9,7 +9,7 @@ import model.model as module_arch
 from parse_config import ConfigParser
 from trainer import Trainer
 from utils import prepare_device
-
+import sys
 ###############
 import os
 from glob import glob
@@ -28,8 +28,13 @@ def main(config):
     logger = config.get_logger('train')
 
     # 데이터 로더 인스턴스 설정
-    data_loader = config.init_obj('data_loader', module_data)
-    valid_data_loader = data_loader.split_validation()
+    data_manager = config.init_obj('data_loader', module_data)
+    data_loader = data_manager.train_loader
+    valid_data_loader = data_manager.valid_loader
+    
+    #################
+    
+    #################
 
     # 모델 아키텍처를 빌드한 다음 정보 출력
     model = config.init_obj('arch', module_arch)
@@ -51,6 +56,7 @@ def main(config):
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
+    
     trainer = Trainer(model, criterion, metrics, optimizer,
                         config=config,
                         device=device,
@@ -76,6 +82,7 @@ if __name__ == '__main__':
         CustomArgs(['--lr', '--learning_rate'], type=float, target='optimizer;args;lr'),
         CustomArgs(['--bs', '--batch_size'], type=int, target='data_loader;args;batch_size')
     ]
+    
     config = ConfigParser.from_args(args, options)
     
     main(config)

@@ -3,8 +3,7 @@ import torch
 from torchvision.utils import make_grid
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
-
-
+    
 class Trainer(BaseTrainer):
     """
     Trainer class
@@ -41,10 +40,15 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
+        truncated = False
         
-        for batch_idx, (data, target) in enumerate(self.data_loader):
+        while not truncated:
+            batch_idx, (data, target) = next(enumerate(self.data_loader))
+            
             data, target = data.to(self.device), target.to(self.device)
-
+            ###############
+            # input의 사이즈 문제? X / test_in = torch.rand([1, 3, 10]).to(self.device)
+            ###############
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)

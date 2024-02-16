@@ -9,12 +9,14 @@
   "data_loader": {
     "type": "FinDataLoader",
     "args": {
-      "data_dir": "data/raw",
+      "data_root": "data/raw",
       "batch_size": 1,
       "shuffle": false,
-      "validation_split": 0.1,
-      "num_workers": 2,
-      "collate_fn": ""
+      "validation_split": 0.2,
+      "num_workers": 0,
+      "window_size": [1, 0],
+      "sliding_size" : [0, 30],
+      "target_size": [0, 30]
     }
   },
   "optimizer": {
