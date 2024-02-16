@@ -1,22 +1,22 @@
 {
-  "name": "Auto Trading",
-  "n_gpu": 2,
+  "name": "FinCNN",
+  "n_gpu": 1,
 
   "arch": {
     "type": "FinCNN",
-    "args": {"num_classes": 2}
+    "args": { "num_classes": 2 }
   },
   "data_loader": {
     "type": "FinDataLoader",
     "args": {
       "data_root": "data/raw",
-      "batch_size": 1,
+      "batch_size": 2,
       "shuffle": false,
       "validation_split": 0.2,
       "num_workers": 0,
-      "window_size": [1, 0],
-      "sliding_size" : [0, 30],
-      "target_size": [0, 30]
+      "window_size": [3, 0],
+      "sliding_size": [0, 30],
+      "target_size": [1, 0]
     }
   },
   "optimizer": {

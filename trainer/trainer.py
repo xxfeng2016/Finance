@@ -46,9 +46,8 @@ class Trainer(BaseTrainer):
             batch_idx, (data, target) = next(enumerate(self.data_loader))
             
             data, target = data.to(self.device), target.to(self.device)
-            ###############
-            # input의 사이즈 문제? X / test_in = torch.rand([1, 3, 10]).to(self.device)
-            ###############
+            # if data.shape[2] < 3:
+            #     raise ValueError("Data shape is too small")
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)

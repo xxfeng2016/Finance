@@ -10,12 +10,7 @@ from glob import glob
 import pandas as pd
 import numpy as np
 ######################
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-from pandas.core.arrays.period import period_array
-from scipy.special import inv_boxcox
 
-from gluonts.time_feature import time_features_from_frequency_str
 ######################
 import scipy.stats as stats
 import scipy.special as special
@@ -137,11 +132,11 @@ class FinCollate():
             batch_y.append(fy)
             batch_inv_lambda.append(inv_lambda)
 
-        return torch.tensor(np.array(batch_x), dtype=torch.float32, requires_grad=False).transpose(1,2), torch.tensor(np.array(batch_y), dtype=torch.float32, requires_grad=False)#batch_inv_lambda, idx,
+        return torch.tensor(np.array(batch_x), dtype=torch.float32).transpose(1,2), torch.tensor(np.array(batch_y), dtype=torch.long).squeeze(1)#batch_inv_lambda, idx,
     
     def featuring_x(self, x):
         if len(x) < 2:
-            return np.column_stack([[0.], [0.], [0.], x["CCLD_DVSN"].values]).astype(np.float16)
+            return np.column_stack([[0.], [0.], [0.], x["CCLD_DVSN"].values]).astype(np.float32)
         
         volume = stats.boxcox(x["CNTG_VOL"].values + 1e-9)
         amount = stats.boxcox((x["STCK_PRPR"].values * x["CNTG_VOL"].values) + 1e-9)
@@ -156,9 +151,9 @@ class FinCollate():
     
     def calculate_prob_distribution(self, x, y):
         if any(((y["STCK_PRPR"] - x.iloc[-1]["STCK_PRPR"]) / x.iloc[-1]["STCK_PRPR"] >= 0.01).values) == True:
-            return np.array([1], dtype=np.float16)
+            return np.array([1], dtype=np.float32)
         else:
-            return np.array([0], dtype=np.float16)
+            return np.array([0], dtype=np.float32)
         
     def featuring_y(self, x, y):
         try:    
@@ -166,9 +161,9 @@ class FinCollate():
             y_vol = (y.loc[y_max]["STCK_PRPR"] - x.iloc[-1]["STCK_PRPR"]) / x.iloc[-1]["STCK_PRPR"] * 100 # 변동률 계산
             y_t = self.calc_tdiff(x.iloc[-1]["STCK_CNTG_HOUR"], y.loc[y_max]["STCK_CNTG_HOUR"]) # input의 마지막 시간과 최고점까지의 시간 차이 계산
         except ValueError:
-            return np.array([0, 0], dtype=np.float16)
+            return np.array([0, 0], dtype=np.float32)
 
-        return np.array([y_vol, y_t], dtype=np.float16)
+        return np.array([y_vol, y_t], dtype=np.float32)
 
     def calc_tdiff(self, base, target):
         e = 10**-9 # unix 시간은 나노초 단위이므로 1초 단위로 바꿔주기위해 곱해준다.
@@ -184,7 +179,7 @@ class FinCollate():
         return result
     
     def visualize(self, x, y):
-        fig = make_subplots(rows=3, cols=2)
+        # fig = make_subplots(rows=3, cols=2)
         # 시각화
         # fig.add_trace(go.Scatter(x=x.index, y=volume, mode="lines", name="거래량"),row=1, col=1)
         # fig.add_trace(go.Scatter(x=x.index, y=amount, mode="lines", name="거래대금"),row=1, col=2)
@@ -198,6 +193,7 @@ class FinCollate():
         # # fig.add_trace(go.Scatter(x=x.index, y=pt[:, 0], mode="lines", name="Yeo Johnson 거래량"),row=1, col=3)
         # # fig.add_trace(go.Scatter(x=x.index, y=pt[:, 1], mode="lines", name="Yeo Johnson 거래대금"),row=2, col=3)
         # # fig.add_trace(go.Scatter(x=x.index, y=pt[:, 2], mode="lines", name="Yeo Johnson 시간 차이"),row=3, col=3)
-        fig.show()
+        # fig.show()
+        NotImplemented
 
     
